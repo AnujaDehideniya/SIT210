@@ -1,1 +1,65 @@
+const int porchLED = 2;
+const int hallwayLED = 3;
+const int switchPin = 4;
 
+// Timing variables
+unsigned long porchStartTime = 0;
+unsigned long hallwayStartTime = 0;
+
+bool porchOn = false;
+bool hallwayOn = false;
+
+bool lastSwitchState = HIGH;
+
+void setup() {
+  pinMode(porchLED, OUTPUT);
+  pinMode(hallwayLED, OUTPUT);
+  pinMode(switchPin, INPUT_PULLUP);
+}
+
+// MAIN LOOP
+void loop() {
+  handleSwitch();
+  updateLights();
+}
+
+// MODULE 1: Handle switch input
+void handleSwitch() {
+  bool currentState = digitalRead(switchPin);
+
+  // Detect switch change (HIGH → LOW)
+  if (lastSwitchState == HIGH && currentState == LOW) {
+    startLights();
+  }
+
+  lastSwitchState = currentState;
+}
+
+// MODULE 2: Start both lights
+void startLights() {
+  digitalWrite(porchLED, HIGH);
+  digitalWrite(hallwayLED, HIGH);
+
+  porchStartTime = millis();
+  hallwayStartTime = millis();
+
+  porchOn = true;
+  hallwayOn = true;
+}
+
+// MODULE 3: Control timing without delay
+void updateLights() {
+  unsigned long currentTime = millis();
+
+  // Porch OFF after 30 sec
+  if (porchOn && currentTime - porchStartTime >= 30000UL) { // 30,000 ms = 30 sec
+    digitalWrite(porchLED, LOW);
+    porchOn = false;
+  }
+
+  // Hallway OFF after 60 sec
+  if (hallwayOn && currentTime - hallwayStartTime >= 60000UL) { // 60,000 ms = 60 sec
+    digitalWrite(hallwayLED, LOW);
+    hallwayOn = false;
+  }
+}
