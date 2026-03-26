@@ -18,7 +18,7 @@ updateLights() – Monitors elapsed time and turns off each light automatically 
 This modular approach makes the code readable, maintainable, and scalable, allowing easy addition of new lights or sensors in the future.
 
 How to Use
-Connect the porch LED to Arduino pin D2 and the hallway LED to D3 (with 220Ω resistors to GND).
+Connect the porch LED to Arduino pin D2 and the hallway LED to D3.
 Connect a push button to pin D4 and GND.
 Upload the code to an Arduino Nano 33 IoT.
 Press the button to turn on the lights.
@@ -26,7 +26,7 @@ Porch light turns off after 30 seconds.
 Hallway light turns off after 60 seconds.
 Hardware Components
 Arduino Nano 33 IoT
-2 LEDs (porch and hallway)
-2 resistors (220Ω)
+2 LEDs 
+2 resistors 
 Push button
 Breadboard & jumper wires
