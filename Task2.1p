@@ -1,1 +1,140 @@
 
+#include <WiFiNINA.h>
+#include <ThingSpeak.h>
+#include <DHT.h>
+#include <Wire.h>
+#include <BH1750.h>
+
+
+const char* WIFI_SSID     = "WiFi-8BCD75";
+const char* WIFI_PASSWORD = "56981193";
+
+unsigned long CHANNEL_ID    = 3318788;
+const char*   WRITE_API_KEY = "36QBRG4AXTFOWGB4";
+
+
+const int FIELD_TEMPERATURE = 1;
+const int FIELD_LIGHT       = 2;
+
+#define DHT_PIN  2      
+#define DHT_TYPE DHT11   
+
+
+
+const unsigned long SEND_INTERVAL_MS = 30000UL;  
+
+
+DHT        dht(DHT_PIN, DHT_TYPE);
+BH1750     lightMeter;
+WiFiClient wifiClient;
+
+unsigned long lastSendTime = 0;
+
+
+void setup() {
+  Serial.begin(9600);
+
+
+  Serial.println("=== Task 2.1P: Temp & Light → ThingSpeak ===");
+
+  Wire.begin();
+  if (!lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
+    Serial.println("[ERROR] BH1750 not found. Check wiring!");
+    while (1);
+  }
+  Serial.println("BH1750 initialised.");
+
+  dht.begin();
+  connectToWiFi();
+  ThingSpeak.begin(wifiClient);
+
+  Serial.println("Setup complete. Sending data every 30 s.\n");
+}
+
+
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi lost. Reconnecting...");
+    connectToWiFi();
+  }
+
+  unsigned long now = millis();
+  if (now - lastSendTime >= SEND_INTERVAL_MS) {
+    lastSendTime = now;
+
+    float temperature = readTemperature();
+    float lightLux    = readLightLevel();
+
+    printSensorData(temperature, lightLux);
+    sendToThingSpeak(temperature, lightLux);
+  }
+}
+
+
+void connectToWiFi() {
+  Serial.print("Connecting to Wi-Fi: ");
+  Serial.print(WIFI_SSID);
+
+  while (WiFi.begin(WIFI_SSID, WIFI_PASSWORD) != WL_CONNECTED) {
+    Serial.print(".");
+    delay(5000);
+  }
+
+  Serial.println("\nConnected!");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+float readTemperature() {
+  float temp = dht.readTemperature();
+
+  if (isnan(temp)) {
+    Serial.println("[ERROR] Failed to read from DHT sensor.");
+  }
+  return temp;
+}
+
+float readLightLevel() {
+  float lux = lightMeter.readLightLevel();
+
+  if (lux < 0) {
+    Serial.println("[ERROR] Failed to read from BH1750.");
+  }
+  return lux;
+}
+
+
+void printSensorData(float temperature, float lightLux) {
+  Serial.println("──────────────────────────");
+  Serial.print("Temperature : ");
+  Serial.print(isnan(temperature) ? 0.0 : temperature);
+  Serial.println(" °C");
+
+  Serial.print("Light Level : ");
+  Serial.print(lightLux);
+  Serial.println(" lx");
+  Serial.println("──────────────────────────");
+}
+
+
+void sendToThingSpeak(float temperature, float lightLux) {
+  
+  ThingSpeak.setField(FIELD_LIGHT, lightLux);
+
+
+  if (!isnan(temperature)) {
+    ThingSpeak.setField(FIELD_TEMPERATURE, temperature);
+    Serial.println("[ThingSpeak] Sending temperature + light...");
+  } else {
+    Serial.println("[ThingSpeak] Sending light only (DHT11 not ready)...");
+  }
+
+  int httpCode = ThingSpeak.writeFields(CHANNEL_ID, WRITE_API_KEY);
+
+  if (httpCode == 200) {
+    Serial.println("[ThingSpeak] Data sent successfully.");
+  } else {
+    Serial.print("[ThingSpeak] Error, HTTP code: ");
+    Serial.println(httpCode);
+  }
+}
