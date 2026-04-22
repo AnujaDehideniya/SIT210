@@ -1,0 +1,63 @@
+#include <Wire.h>
+#include <BH1750.h>
+
+const int PIR_PIN    = 2;
+const int SWITCH_PIN = 3;
+const int LED1_PIN   = 5;
+const int LED2_PIN   = 6;
+
+const float DARK_THRESHOLD = 50.0;
+
+volatile bool motionDetected = false;
+volatile bool switchToggled  = false;
+
+bool lightsOn = false;
+
+BH1750 lightMeter;
+
+void onMotion() { motionDetected = true; }
+void onSwitch() { switchToggled = true; }
+
+void setup() {
+  Serial.begin(9600);
+  delay(3000);
+  Wire.begin();
+  lightMeter.begin();
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(PIR_PIN, INPUT);
+  pinMode(SWITCH_PIN, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(PIR_PIN), onMotion, RISING);
+  attachInterrupt(digitalPinToInterrupt(SWITCH_PIN), onSwitch, CHANGE);
+  Serial.println("System ready!");
+}
+
+void setLights(bool on) {
+  lightsOn = on;
+  digitalWrite(LED1_PIN, on ? HIGH : LOW);
+  digitalWrite(LED2_PIN, on ? HIGH : LOW);
+}
+
+void loop() {
+  float lux = lightMeter.readLightLevel();
+  if (motionDetected) {
+    motionDetected = false;
+    if (lux < DARK_THRESHOLD) {
+      setLights(true);
+      Serial.print("Motion detected! Lux: ");
+      Serial.print(lux);
+      Serial.println(" — Lights ON");
+    } else {
+      Serial.print("Motion detected, too bright: ");
+      Serial.print(lux);
+      Serial.println(" lux");
+    }
+  }
+  if (switchToggled) {
+    switchToggled = false;
+    setLights(!lightsOn);
+    Serial.print("Switch toggled — Lights ");
+    Serial.println(lightsOn ? "ON" : "OFF");
+  }
+  delay(100);
+}
